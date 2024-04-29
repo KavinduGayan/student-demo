@@ -1,6 +1,3 @@
-Certainly! Below is a sample `README.md` file for your Spring Boot project, which includes endpoints for managing `Student` objects using Maven, Spring Boot, H2 database, and JPA. This README will guide users on how to set up, run, and interact with the project.
-
----
 
 # Student Management System
 
@@ -10,7 +7,6 @@ This is a simple Spring Boot application for managing student records. It uses M
 
 - Create, Read, Update, and Delete student records.
 - In-memory H2 database for easy setup and teardown.
-- Swagger UI for API interaction.
 
 ## Prerequisites
 
