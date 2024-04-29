@@ -1,85 +1,71 @@
 package com.example.studentdemo;
 
 import com.example.studentdemo.model.Student;
-import com.example.studentdemo.repository.StudentRepository;
-import com.example.studentdemo.service.StudentService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.*;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.util.List;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-class StudentControllerTests {
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+public class StudentControllerTests {
+
+    @LocalServerPort
+    private int port;
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestRestTemplate restTemplate;
 
-    @Autowired
-    private StudentService studentService;
-    @Mock
-    private StudentRepository studentRepository;
+    private String baseUrl;
 
-    @Test
-    void testGetAllStudents() throws Exception {
-        mockMvc.perform(get("/students"))
-                .andExpect(status().isOk());
+    @BeforeEach
+    public void setUp() {
+        this.baseUrl = "http://localhost:" + port + "/students";
     }
 
     @Test
-    void testCreateStudent() throws Exception {
-        Student student = new Student("John Doe", 20);
-        when(studentService.saveStudent(any(Student.class))).thenReturn(student);
-        when(studentRepository.save(any(Student.class))).thenReturn(student);
-
-        mockMvc.perform(post("/students")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(new ObjectMapper().writeValueAsString(student)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("John Doe"))
-                .andExpect(jsonPath("$.age").value(20));
+    public void testGetAllStudents() {
+        ResponseEntity<List> response = restTemplate.getForEntity(baseUrl, List.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
     }
 
     @Test
-    void testGetStudentById() throws Exception {
-        Long studentId = 1L;
-        Student student = new Student("John Doe", 20);
-        student.setId(studentId);
-        when(studentService.findStudentById(studentId)).thenReturn(student);
-
-        mockMvc.perform(get("/students/" + studentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("John Doe"));
+    public void testCreateStudent() {
+        Student student = new Student("test", 20);
+        ResponseEntity<Student> response = restTemplate.postForEntity(baseUrl, student, Student.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getName()).isEqualTo(student.getName());
     }
 
     @Test
-    void testUpdateStudent() throws Exception {
-        Long studentId = 1L;
-        Student student = new Student("John Doe", 20);
-        student.setId(studentId);
-        when(studentService.updateStudent(eq(studentId), any(Student.class))).thenReturn(student);
-
-        mockMvc.perform(put("/students/" + studentId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(new ObjectMapper().writeValueAsString(student)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("John Doe"));
+    public void testGetStudentById() {
+        // Assuming there is a student with ID 1
+        ResponseEntity<Student> response = restTemplate.getForEntity(baseUrl + "/1", Student.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
     }
 
     @Test
-    void testDeleteStudent() throws Exception {
-        Long studentId = 1L;
-        doNothing().when(studentService).deleteStudent(studentId);
+    public void testUpdateStudent() {
+        Student updatedStudent = new Student("test", 22);
+        HttpEntity<Student> requestEntity = new HttpEntity<>(updatedStudent);
+        ResponseEntity<Student> response = restTemplate.exchange(baseUrl + "/1", HttpMethod.PUT, requestEntity, Student.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getName()).isEqualTo(updatedStudent.getName());
+    }
 
-        mockMvc.perform(delete("/students/" + studentId))
-                .andExpect(status().isOk());
+    @Test
+    public void testDeleteStudent() {
+        ResponseEntity<Void> response = restTemplate.exchange(baseUrl + "/1", HttpMethod.DELETE, HttpEntity.EMPTY, Void.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
 }
